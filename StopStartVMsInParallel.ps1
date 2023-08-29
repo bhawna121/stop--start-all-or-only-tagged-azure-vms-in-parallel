@@ -2,9 +2,6 @@ Workflow StopStartVMsInParallel
 {
     param (
 
-     	[Parameter(Mandatory=$true)]  
-   	[String] $SubscriptionId,
-
         [Parameter(Mandatory=$true)]  
         [String] $Action,
 
@@ -23,24 +20,30 @@ Workflow StopStartVMsInParallel
     try
     {
         # Ensures you do not inherit an AzContext in your runbook
-        
-		$null = Disable-AzContextAutosave –Scope Process
+        $null = Disable-AzContextAutosave -Scope Process
 
-		$null= Connect-AzAccount -Identity
-   
+        $Conn = Get-AutomationConnection -Name AzureRunAsConnection
+        
+        $null = Connect-AzAccount `
+                        -ServicePrincipal `
+                        -Tenant $Conn.TenantID `
+                        -ApplicationId $Conn.ApplicationID `
+                        -CertificateThumbprint $Conn.CertificateThumbprint
 
         Write-Output "Successfully logged into Azure." 
-
-   	$AzureContext = Set-AzContext -SubscriptionId $SubscriptionId    
-   
     } 
     catch
     {
-        
-        
+        if (!$Conn)
+        {
+            $ErrorMessage = "Service principal not found."
+            throw $ErrorMessage
+        } 
+        else
+        {
             Write-Error -Message $_.Exception
             throw $_.Exception
-        
+        }
     }
     ## End of authentication
 
